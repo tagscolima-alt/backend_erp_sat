@@ -9,7 +9,7 @@ import { SatModule } from './sat/sat.module';
       host: 'localhost',     // asegúrate que tu Postgres esté corriendo
       port: 5432,
       username: 'postgres',
-      password: 'admin123',
+      password: '123456',
       database: 'erpsat',
       autoLoadEntities: true, // debe estar habilitado
       synchronize: true,      // crea las tablas automáticamente
