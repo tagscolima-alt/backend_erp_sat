@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
@@ -12,6 +12,10 @@ export class SatService {
     @InjectRepository(Token) private tokenRepo: Repository<Token>,
   ) {}
 
+  // ========================
+  //   MÉTODOS EXISTENTES
+  // ========================
+
   async solicitarToken(body: any) {
     const { rfc, password, certificado } = body;
 
@@ -24,7 +28,6 @@ export class SatService {
     });
 
     await this.tokenRepo.save(token);
-
     return {
       access_token: token.access_token,
       token_type: token.token_type,
@@ -62,7 +65,7 @@ export class SatService {
     const cfdi = await this.cfdiRepo.findOne({ where: { uuid } });
 
     if (!cfdi) {
-      return { error: `CFDI con UUID ${uuid} no encontrado` };
+      throw new NotFoundException(`CFDI con UUID ${uuid} no encontrado`);
     }
 
     cfdi.estatus = 'Cancelado Correctamente';
@@ -77,10 +80,64 @@ export class SatService {
     };
   }
 
-  // Nuevo endpoint para listar CFDIs
   async listarCFDIs() {
     return this.cfdiRepo.find({
       order: { fechaTimbrado: 'DESC' },
     });
+  }
+
+  // ========================
+  //   NUEVOS MÉTODOS
+  // ========================
+
+  // 📄 1️⃣ Obtener detalle de un CFDI
+  async obtenerDetalleCFDI(uuid: string) {
+    const cfdi = await this.cfdiRepo.findOne({ where: { uuid } });
+    if (!cfdi) throw new NotFoundException(`CFDI con UUID ${uuid} no encontrado`);
+    return cfdi;
+  }
+
+  // 🔍 2️⃣ Validar si existe un CFDI
+  async validarCFDI(uuid: string) {
+    const cfdi = await this.cfdiRepo.findOne({ where: { uuid } });
+    if (!cfdi) {
+      return { uuid, valido: false, mensaje: 'CFDI no encontrado' };
+    }
+    return { uuid, valido: true, estatus: cfdi.estatus };
+  }
+
+  // 🧾 3️⃣ Listar todos los tokens emitidos
+  async listarTokens() {
+    return this.tokenRepo.find({
+      order: { creadoEn: 'DESC' },
+    });
+  }
+
+  // ♻️ 4️⃣ Renovar un token existente
+  async renovarToken(body: any) {
+    const { old_token } = body;
+    const tokenExistente = await this.tokenRepo.findOne({
+      where: { access_token: old_token },
+    });
+
+    if (!tokenExistente) {
+      throw new NotFoundException(`Token anterior no encontrado`);
+    }
+
+    const nuevoToken = this.tokenRepo.create({
+      rfc: tokenExistente.rfc,
+      certificado: tokenExistente.certificado,
+      access_token: uuidv4(),
+      token_type: 'bearer',
+      expires_in: 3600,
+    });
+
+    await this.tokenRepo.save(nuevoToken);
+
+    return {
+      mensaje: 'Token renovado correctamente',
+      nuevo_token: nuevoToken.access_token,
+      anterior: old_token,
+    };
   }
 }
