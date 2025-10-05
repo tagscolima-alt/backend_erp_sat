@@ -1,54 +1,41 @@
 import { Injectable } from '@nestjs/common';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class SatService {
-  solicitarToken(body: any) {
+  async solicitarToken(body: any) {
+    const { rfc, password, certificado } = body;
+
     return {
-      access_token: 'ABC123XYZ',
+      access_token: uuidv4(),
       token_type: 'bearer',
       expires_in: 3600,
-      recibido: body,
-      mensaje: 'Token simulado correctamente.',
+      recibido: { rfc, certificado },
     };
   }
 
-  renovarToken(body: any) {
-    return {
-      access_token: 'NEW123TOKEN',
-      token_type: 'bearer',
-      expires_in: 3600,
-      mensaje: 'Token renovado correctamente.',
-    };
-  }
+  async emitirCFDI(body: any) {
+    const { rfcEmisor, rfcReceptor, total, token } = body;
 
-  emitirCFDI(body: any) {
     return {
-      uuid: '123e4567-e89b-12d3-a456-426614174000',
+      uuid: uuidv4(),
       fechaTimbrado: new Date().toISOString(),
       rfcProvCertif: 'AAA010101AAA',
       selloSAT: 'SELLOSAT123ABC',
       estatus: 'Timbrado Correctamente',
-      recibido: body,
+      recibido: { rfcEmisor, rfcReceptor, total, token },
     };
   }
 
-  validarCFDI(body: any) {
-    return {
-      estatus: 'Vigente',
-      codigoEstatus: 'S - Comprobante obtenido satisfactoriamente',
-      esCancelable: 'Cancelable sin aceptación',
-      estatusCancelacion: 'No Cancelado',
-      recibido: body,
-    };
-  }
+  async cancelarCFDI(body: any) {
+    const { uuid, motivo, token } = body;
 
-  cancelarCFDI(body: any) {
     return {
-      uuid: body.uuid,
-      estatusCancelacion: 'Cancelado Correctamente',
+      uuid,
       fechaCancelacion: new Date().toISOString(),
-      codigoSAT: '202',
-      mensaje: 'CFDI cancelado exitosamente en el SAT',
+      estatus: 'Cancelado Correctamente',
+      motivo,
+      token,
     };
   }
 }

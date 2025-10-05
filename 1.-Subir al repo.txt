@@ -1,0 +1,37 @@
+Desde la carpeta del proyecto
+
+git status:
+
+    // ver Changes not staged for commit:
+    //	modified:   index.html
+
+git add index.html
+
+
+
+
+git add -f build/web
+git commit -m "Forzando add de build/web"
+git push origin main
+
+
+
+
+C:\Users\laptop\prueba-git\mi_web_app>
+
+git add .
+git commit -m "Proyecto Flutter SAT - código fuente"
+git push origin main
+
+
+ver historial
+git log --oneline
+
+----regresar a un comit----
+git checkout main
+
+git add .
+git commit -m "Guardando cambios antes de revertir"
+
+git revert --no-commit e9f7c27..HEAD
+git commit -m "Revertir cambios a versión estable: solicitar y renovar con interfaces main"

@@ -1,43 +1,26 @@
-import { Controller, Post, Body, Get } from '@nestjs/common';
+import { Controller, Post, Body } from '@nestjs/common';
 import { SatService } from './sat.service';
 
-@Controller('api/sat')
+@Controller('api/sat/cfdi')
 export class SatController {
   constructor(private readonly satService: SatService) {}
 
-  // 🔴 Solicitar token
-  @Post('token/solicitar')
+  // Solicitar token
+  @Post('token')
   solicitarToken(@Body() body: any) {
     return this.satService.solicitarToken(body);
   }
 
-  // 🟠 Renovar token
-  @Post('token/renovar')
-  renovarToken(@Body() body: any) {
-    return this.satService.renovarToken(body);
-  }
-
-  // 🧾 Emitir CFDI
-  @Post('cfdi/emitir')
+  // Emitir CFDI
+  @Post('emitir')
   emitirCFDI(@Body() body: any) {
     return this.satService.emitirCFDI(body);
   }
 
-  // 🔍 Validar CFDI
-  @Post('cfdi/validar')
-  validarCFDI(@Body() body: any) {
-    return this.satService.validarCFDI(body);
-  }
-
-  // ❌ Cancelar CFDI
-  @Post('cfdi/cancelar')
+  // Cancelar CFDI
+  @Post('cancelar')
   cancelarCFDI(@Body() body: any) {
     return this.satService.cancelarCFDI(body);
   }
-
-  // 🧪 Ruta de prueba
-  @Get('ping')
-  ping() {
-    return { ok: true, message: 'SAT API online ✅' };
-  }
 }
+
