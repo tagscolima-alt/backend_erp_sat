@@ -3,10 +3,14 @@ import { SatService } from './sat.service';
 import { SolicitarTokenDto } from './dto/solicitar-token.dto';
 import { EmitirCfdiDto } from './dto/emitir-cfdi.dto';
 import { CancelarCfdiDto } from './dto/cancelar-cfdi.dto';
+import { DataSource } from 'typeorm'; // ✅ Importamos el DataSource
 
 @Controller('api/sat/cfdi')
 export class SatController {
-  constructor(private readonly satService: SatService) {}
+  constructor(
+    private readonly satService: SatService,
+    private readonly dataSource: DataSource, // ✅ Inyectamos el DataSource
+  ) {}
 
   // === Endpoints existentes ===
   @Post('token')
@@ -48,5 +52,27 @@ export class SatController {
   @Post('renovar-token')
   renovarToken(@Body() body: any) {
     return this.satService.renovarToken(body);
+  }
+
+  // ✅ === Nuevo endpoint: prueba de conexión a PostgreSQL ===
+  @Get('test-db')
+  async probarConexionBD() {
+    try {
+      const result = await this.dataSource.query(
+        'SELECT current_database(), current_user, NOW();',
+      );
+      const fila = result[0];
+      return {
+        conexion: 'ok',
+        baseDatos: fila.current_database,
+        usuario: fila.current_user,
+        horaServidor: fila.now,
+      };
+    } catch (error) {
+      return {
+        conexion: 'error',
+        detalle: error.message,
+      };
+    }
   }
 }
