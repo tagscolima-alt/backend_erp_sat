@@ -6,15 +6,15 @@ import { SatModule } from './sat/sat.module';
   imports: [
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'localhost',     // asegúrate que tu Postgres esté corriendo
+      host: 'localhost',
       port: 5432,
       username: 'postgres',
       password: '123456',
       database: 'erpsat',
-      autoLoadEntities: true, // debe estar habilitado
-      synchronize: true,      // crea las tablas automáticamente
+      autoLoadEntities: true,
+      synchronize: true,
     }),
-    SatModule, // 👈 importante: SatModule después de TypeOrmModule
+    SatModule,
   ],
 })
 export class AppModule {}

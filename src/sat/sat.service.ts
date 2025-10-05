@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { Cfdi } from './entities/cfdi.entity';
 import { Token } from './entities/token.entity';
@@ -10,11 +10,12 @@ export class SatService {
   constructor(
     @InjectRepository(Cfdi) private cfdiRepo: Repository<Cfdi>,
     @InjectRepository(Token) private tokenRepo: Repository<Token>,
+    private readonly dataSource: DataSource, // ✅ Inyectamos conexión directa a BD
   ) {}
 
-  // ========================
-  //   MÉTODOS EXISTENTES
-  // ========================
+  // 🧾 ========================================================
+  //                    MÉTODOS EXISTENTES
+  // ==========================================================
 
   async solicitarToken(body: any) {
     const { rfc, password, certificado } = body;
@@ -28,6 +29,10 @@ export class SatService {
     });
 
     await this.tokenRepo.save(token);
+
+    // 🪵 Registrar log
+    await this.registrarLog('SAT', 'solicitarToken', body);
+
     return {
       access_token: token.access_token,
       token_type: token.token_type,
@@ -50,6 +55,9 @@ export class SatService {
 
     await this.cfdiRepo.save(cfdi);
 
+    // 🪵 Registrar log
+    await this.registrarLog('SAT', 'emitirCFDI', body);
+
     return {
       uuid: cfdi.uuid,
       fechaTimbrado: cfdi.fechaTimbrado,
@@ -71,6 +79,9 @@ export class SatService {
     cfdi.estatus = 'Cancelado Correctamente';
     await this.cfdiRepo.save(cfdi);
 
+    // 🪵 Registrar log
+    await this.registrarLog('SAT', 'cancelarCFDI', body);
+
     return {
       uuid,
       fechaCancelacion: new Date(),
@@ -81,39 +92,51 @@ export class SatService {
   }
 
   async listarCFDIs() {
-    return this.cfdiRepo.find({
+    const lista = await this.cfdiRepo.find({
       order: { fechaTimbrado: 'DESC' },
     });
+
+    // 🪵 Registrar log de consulta
+    await this.registrarLog('SAT', 'listarCFDIs', { total: lista.length });
+
+    return lista;
   }
 
-  // ========================
-  //   NUEVOS MÉTODOS
-  // ========================
+  // ==========================================================
+  //                      NUEVOS MÉTODOS
+  // ==========================================================
 
-  // 📄 1️⃣ Obtener detalle de un CFDI
   async obtenerDetalleCFDI(uuid: string) {
     const cfdi = await this.cfdiRepo.findOne({ where: { uuid } });
-    if (!cfdi) throw new NotFoundException(`CFDI con UUID ${uuid} no encontrado`);
+    if (!cfdi)
+      throw new NotFoundException(`CFDI con UUID ${uuid} no encontrado`);
+
+    await this.registrarLog('SAT', 'obtenerDetalleCFDI', { uuid });
+
     return cfdi;
   }
 
-  // 🔍 2️⃣ Validar si existe un CFDI
   async validarCFDI(uuid: string) {
     const cfdi = await this.cfdiRepo.findOne({ where: { uuid } });
-    if (!cfdi) {
-      return { uuid, valido: false, mensaje: 'CFDI no encontrado' };
-    }
-    return { uuid, valido: true, estatus: cfdi.estatus };
+    const resultado = cfdi
+      ? { uuid, valido: true, estatus: cfdi.estatus }
+      : { uuid, valido: false, mensaje: 'CFDI no encontrado' };
+
+    await this.registrarLog('SAT', 'validarCFDI', resultado);
+
+    return resultado;
   }
 
-  // 🧾 3️⃣ Listar todos los tokens emitidos
   async listarTokens() {
-    return this.tokenRepo.find({
+    const tokens = await this.tokenRepo.find({
       order: { creadoEn: 'DESC' },
     });
+
+    await this.registrarLog('SAT', 'listarTokens', { total: tokens.length });
+
+    return tokens;
   }
 
-  // ♻️ 4️⃣ Renovar un token existente
   async renovarToken(body: any) {
     const { old_token } = body;
     const tokenExistente = await this.tokenRepo.findOne({
@@ -134,10 +157,41 @@ export class SatService {
 
     await this.tokenRepo.save(nuevoToken);
 
+    await this.registrarLog('SAT', 'renovarToken', { old_token });
+
     return {
       mensaje: 'Token renovado correctamente',
       nuevo_token: nuevoToken.access_token,
       anterior: old_token,
     };
   }
-}
+
+  /// ==========================================================
+  //                     SISTEMA DE LOGS (MEJORADO)
+  // ==========================================================
+
+  async registrarLog(
+    origen: string,
+    accion: string,
+    detalles: any,
+    ip_cliente = 'localhost',
+    metodo_http = '',
+    endpoint = '',
+  ) {
+    try {
+      const accionCompleta = metodo_http && endpoint
+        ? `${metodo_http.toUpperCase()} ${endpoint}`
+        : accion;
+
+      await this.dataSource.query(
+        `INSERT INTO logs_sistema (origen, accion, detalles, ip_cliente)
+         VALUES ($1, $2, $3, $4)`,
+        [origen, accionCompleta, JSON.stringify(detalles), ip_cliente],
+      );
+
+      console.log(`🗂 Log registrado: [${origen}] ${accionCompleta}`);
+    } catch (error) {
+      console.warn('⚠️ Error al registrar log:', error.message);
+    }
+  }
+  }
