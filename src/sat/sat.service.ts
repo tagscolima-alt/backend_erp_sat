@@ -68,28 +68,43 @@ export class SatService {
     };
   }
 
-  async cancelarCFDI(body: any) {
-    const { uuid, motivo, token } = body;
-    const cfdi = await this.cfdiRepo.findOne({ where: { uuid } });
+// 🧾 Cancelar un CFDI existente
+async cancelarCFDI(body: any) {
+  const { uuid, motivo, token } = body;
+  const cfdi = await this.cfdiRepo.findOne({ where: { uuid } });
 
-    if (!cfdi) {
-      throw new NotFoundException(`CFDI con UUID ${uuid} no encontrado`);
-    }
-
-    cfdi.estatus = 'Cancelado Correctamente';
-    await this.cfdiRepo.save(cfdi);
-
-    // 🪵 Registrar log
-    await this.registrarLog('SAT', 'cancelarCFDI', body);
-
-    return {
-      uuid,
-      fechaCancelacion: new Date(),
-      estatus: cfdi.estatus,
-      motivo,
-      token,
-    };
+  if (!cfdi) {
+    throw new NotFoundException(`CFDI con UUID ${uuid} no encontrado`);
   }
+
+  cfdi.estatus = 'Cancelado Correctamente';
+  await this.cfdiRepo.save(cfdi);
+
+  // Registrar log de cancelación
+  await this.cfdiRepo.query(
+    `INSERT INTO logs_sistema (origen, accion, detalles, ip_cliente)
+     VALUES ($1, $2, $3, $4)`,
+    [
+      'SAT',
+      'cancelarCFDI',
+      JSON.stringify({
+        uuid,
+        motivo,
+        token,
+        fechaCancelacion: new Date().toISOString(),
+      }),
+      '::1', // localhost
+    ],
+  );
+
+  return {
+    uuid,
+    fechaCancelacion: new Date(),
+    estatus: cfdi.estatus,
+    motivo,
+    token,
+  };
+}
 
   async listarCFDIs() {
     const lista = await this.cfdiRepo.find({
